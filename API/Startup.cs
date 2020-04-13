@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using API.Middlewares;
 using Application.Interfaces;
+using API.Middlewares;
 using Domain;
 using Infrastructure.Security;
 using MediatR;
@@ -42,19 +42,24 @@ namespace API
                 options.UseLazyLoadingProxies ();
                 options.UseMySql (Configuration.GetConnectionString ("DefaultConnection"));
             });
-            
-            services.AddScoped<IJwtGenerator, JwtGenerator>();
-            services.AddScoped<IUserAccessor, UserAccessor>();
+
+            services.AddScoped<IJwtGenerator, JwtGenerator> ();
+            services.AddScoped<IUserAccessor, UserAccessor> ();
 
             services.AddMediatR (typeof (Application.Trees.Create.Handler).Assembly);
 
-            services.AddControllers ();
+            services.AddControllers (opt =>
+            {
+                //for all controller access, only allow auth users unless explictly told to let through
+                var policy = new AuthorizationPolicyBuilder ().RequireAuthenticatedUser ().Build ();
+                opt.Filters.Add (new AuthorizeFilter (policy));
+            });
 
             var builder = services.AddIdentityCore<AppUser> ();
             var identityBuilder = new IdentityBuilder (builder.UserType, builder.Services);
             identityBuilder.AddEntityFrameworkStores<DataContext> (); //creates user stores
             identityBuilder.AddSignInManager<SignInManager<AppUser>> (); //ability to create/manage users
-            
+
             var key = new SymmetricSecurityKey (Encoding.UTF8.GetBytes (Configuration["TokenKey"]));
             services.AddAuthentication (JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer (opt =>
@@ -74,7 +79,7 @@ namespace API
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure (IApplicationBuilder app, IWebHostEnvironment env)
         {
-            app.UseMiddleware<ErrorHandlingMiddleware>();
+            app.UseMiddleware<ErrorHandlingMiddleware> ();
 
             if (env.IsDevelopment ())
             {
@@ -85,6 +90,7 @@ namespace API
 
             app.UseRouting ();
 
+            app.UseAuthentication ();
             app.UseAuthorization ();
 
             app.UseEndpoints (endpoints =>
