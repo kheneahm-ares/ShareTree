@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Application.DTOs;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using TreesHandler = Application.Trees;
@@ -19,5 +20,12 @@ namespace API.Controllers
         {
            return await Mediator.Send(new TreesHandler.Delete.Command {Id = id}); 
         }
+
+        [HttpGet("{id}")]
+        public async Task<TreeDTO> Details(Guid id)
+        {
+           return await Mediator.Send(new TreesHandler.Details.Query {Id = id}); 
+        }
+
     }
 }
